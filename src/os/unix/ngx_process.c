@@ -114,7 +114,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     if (respawn != NGX_PROCESS_DETACHED) {
 
         /* Solaris 9 still has no AF_LOCAL */
-
+        // 进程间通信的socket
         if (socketpair(AF_UNIX, SOCK_STREAM, 0, ngx_processes[s].channel) == -1)
         {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -126,7 +126,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
                        "channel %d:%d",
                        ngx_processes[s].channel[0],
                        ngx_processes[s].channel[1]);
-
+        // 设置非阻塞
         if (ngx_nonblocking(ngx_processes[s].channel[0]) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           ngx_nonblocking_n " failed while spawning \"%s\"",
@@ -144,6 +144,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
         }
 
         on = 1;
+        // 设置各种属性
         if (ioctl(ngx_processes[s].channel[0], FIOASYNC, &on) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "ioctl(FIOASYNC) failed while spawning \"%s\"", name);
@@ -193,9 +194,11 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
                       "fork() failed while spawning \"%s\"", name);
         ngx_close_channel(ngx_processes[s].channel, cycle->log);
         return NGX_INVALID_PID;
-
+    // 子进程
     case 0:
+        // 记录父进程id
         ngx_parent = ngx_pid;
+        // 进程自己的进程id
         ngx_pid = ngx_getpid();
         proc(cycle, data);
         break;

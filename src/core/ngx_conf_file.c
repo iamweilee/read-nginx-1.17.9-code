@@ -579,13 +579,13 @@ ngx_conf_read_token(ngx_conf_t *cf)
             if (len) {
                 ngx_memmove(b->start, start, len);
             }
-
+            // 在配置文件中，还剩size字节未读取
             size = (ssize_t) (file_size - cf->conf_file->file.offset);
-
+            // 取小者
             if (size > b->end - (b->start + len)) {
                 size = b->end - (b->start + len);
             }
-
+            // 从offset开始读取size个字节到start+len开始的位置，返回成功读取的字节数
             n = ngx_read_file(&cf->conf_file->file, b->start + len, size,
                               cf->conf_file->file.offset);
 

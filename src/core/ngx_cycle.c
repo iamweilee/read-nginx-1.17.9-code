@@ -1076,7 +1076,7 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
     u_char            buf[NGX_INT64_LEN + 2];
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "signal process started");
-    // 从配置文件中拿到主进程的进程id
+    // 从配置文件中拿到保存了主进程进程id的文件路径
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     ngx_memzero(&file, sizeof(ngx_file_t));
