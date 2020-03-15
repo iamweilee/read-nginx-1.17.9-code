@@ -499,10 +499,16 @@ ngx_event_module_init(ngx_cycle_t *cycle)
                       "getrlimit(RLIMIT_NOFILE) failed, ignored");
 
     } else {
+        /*
+            connections表示一个worker同时能打开的连接（包括上流和下流）
+            1 大于打开文件的数量上限
+            2 修改了打开文件的数量上限，但是仍然小于connections
+        */
         if (ecf->connections > (ngx_uint_t) rlmt.rlim_cur
             && (ccf->rlimit_nofile == NGX_CONF_UNSET
                 || ecf->connections > (ngx_uint_t) ccf->rlimit_nofile))
         {
+            // 取最小值
             limit = (ccf->rlimit_nofile == NGX_CONF_UNSET) ?
                          (ngx_int_t) rlmt.rlim_cur : ccf->rlimit_nofile;
 
@@ -544,15 +550,15 @@ ngx_event_module_init(ngx_cycle_t *cycle)
            + cl;         /* ngx_stat_waiting */
 
 #endif
-
+    // 共享内存的大小
     shm.size = size;
     ngx_str_set(&shm.name, "nginx_shared_zone");
     shm.log = cycle->log;
-
+    // 分配共享内存
     if (ngx_shm_alloc(&shm) != NGX_OK) {
         return NGX_ERROR;
     }
-
+    // 共享内存的首地址
     shared = shm.addr;
 
     ngx_accept_mutex_ptr = (ngx_atomic_t *) shared;
@@ -636,7 +642,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
 #if (NGX_WIN32)
 
-    /*
+    /*  
      * disable accept mutex on win32 as it may cause deadlock if
      * grabbed by a process which can't accept connections
      */
@@ -680,7 +686,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         ngx_memzero(&sa, sizeof(struct sigaction));
         sa.sa_handler = ngx_timer_signal_handler;
         sigemptyset(&sa.sa_mask);
-
+        // 注册ALARM信号的处理函数
         if (sigaction(SIGALRM, &sa, NULL) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "sigaction(SIGALRM) failed");
@@ -691,7 +697,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         itv.it_interval.tv_usec = (ngx_timer_resolution % 1000) * 1000;
         itv.it_value.tv_sec = ngx_timer_resolution / 1000;
         itv.it_value.tv_usec = (ngx_timer_resolution % 1000 ) * 1000;
-
+        // 设置定时器,定时触发ALARM信号,并且每隔一段时间再次触发
         if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                           "setitimer() failed");
@@ -726,7 +732,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
     }
 
 #endif
-
+    // 申请内存保存连接和读写事件的结构体
     cycle->connections =
         ngx_alloc(sizeof(ngx_connection_t) * cycle->connection_n, cycle->log);
     if (cycle->connections == NULL) {
@@ -760,7 +766,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
     i = cycle->connection_n;
     next = NULL;
-
+    // 关联三种结构体，并且把connection结构体连成链表
     do {
         i--;
 
