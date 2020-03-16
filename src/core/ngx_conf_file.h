@@ -75,11 +75,16 @@
 
 
 struct ngx_command_s {
+    // 命令名称
     ngx_str_t             name;
+    // 命令对应的配置标记
     ngx_uint_t            type;
+    // 解析到命令是执行的回调
     char               *(*set)(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
     ngx_uint_t            conf;
+    // 在保存配置的结构体中的偏移，在回调里使用
     ngx_uint_t            offset;
+    // 配置校验函数，在解析配置时使用
     void                 *post;
 };
 

@@ -16,17 +16,19 @@
 typedef struct ngx_listening_s  ngx_listening_t;
 
 struct ngx_listening_s {
+    // 监听的fd
     ngx_socket_t        fd;
-
+    // 监听的地址信息
     struct sockaddr    *sockaddr;
     socklen_t           socklen;    /* size of sockaddr */
     size_t              addr_text_max_len;
     ngx_str_t           addr_text;
-
+    // socket类似，比如tcp
     int                 type;
-
+    // listen函数的参数，底层队列的长度
     int                 backlog;
-    int                 rcvbuf;
+    // 接收和发送缓冲区大小
+    int                  rcvbuf;
     int                 sndbuf;
 #if (NGX_HAVE_KEEPALIVE_TUNABLE)
     int                 keepidle;
@@ -35,6 +37,7 @@ struct ngx_listening_s {
 #endif
 
     /* handler of accepted connection */
+    // 有连接到来时的处理函数，主要是accept
     ngx_connection_handler_pt   handler;
 
     void               *servers;  /* array of ngx_http_in_addr_t, for example */
@@ -123,16 +126,17 @@ typedef enum {
 
 struct ngx_connection_s {
     void               *data;
+    // 连接关联的读写事件结构体
     ngx_event_t        *read;
     ngx_event_t        *write;
-
+    // accept返回的fd
     ngx_socket_t        fd;
-
+    // 接收发送函数
     ngx_recv_pt         recv;
     ngx_send_pt         send;
     ngx_recv_chain_pt   recv_chain;
     ngx_send_chain_pt   send_chain;
-
+    // 连接来自哪个listen结构体
     ngx_listening_t    *listening;
 
     off_t               sent;
@@ -140,9 +144,9 @@ struct ngx_connection_s {
     ngx_log_t          *log;
 
     ngx_pool_t         *pool;
-
+    // socket的类型，tcp、udp
     int                 type;
-
+    // 对端地址信息
     struct sockaddr    *sockaddr;
     socklen_t           socklen;
     ngx_str_t           addr_text;
