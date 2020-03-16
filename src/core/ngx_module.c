@@ -38,7 +38,7 @@ ngx_preinit_modules(void)
     return NGX_OK;
 }
 
-
+// 复制modules信息和modules数量到cycle
 ngx_int_t
 ngx_cycle_modules(ngx_cycle_t *cycle)
 {

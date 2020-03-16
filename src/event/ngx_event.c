@@ -484,7 +484,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
         ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
                       "using the \"%s\" event method", ecf->name);
     }
-    // 获取nginx core模块的配置和event core同级的一个模块
+    // 获取nginx core模块的配置,和event core同级的一个模块
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     ngx_timer_resolution = ccf->timer_resolution;
@@ -777,8 +777,9 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
         next = &c[i];
     } while (i);
-
+    // 指向第一个connection
     cycle->free_connections = next;
+    // free的个数
     cycle->free_connection_n = cycle->connection_n;
 
     /* for each listening socket */
@@ -807,6 +808,7 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         rev = c->read;
 
         rev->log = c->log;
+        // 来自listen，监听型socket
         rev->accept = 1;
 
 #if (NGX_HAVE_DEFERRED_ACCEPT)

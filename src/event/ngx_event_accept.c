@@ -152,7 +152,7 @@ ngx_event_accept(ngx_event_t *ev)
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_active, 1);
 #endif
-
+        // 一个连接分配一个内存池
         c->pool = ngx_create_pool(ls->pool_size, ev->log);
         if (c->pool == NULL) {
             ngx_close_accepted_connection(c);
