@@ -27,6 +27,7 @@ ngx_event_accept(ngx_event_t *ev)
     ngx_listening_t   *ls;
     ngx_connection_t  *c, *lc;
     ngx_event_conf_t  *ecf;
+// 标记是否支持accept4，等于1，即第一次先尝试用accept4
 #if (NGX_HAVE_ACCEPT4)
     static ngx_uint_t  use_accept4 = 1;
 #endif
@@ -64,10 +65,11 @@ ngx_event_accept(ngx_event_t *ev)
 #else
         s = accept(lc->fd, &sa.sockaddr, &socklen);
 #endif
-
+        // 没有拿到有效的连接 
         if (s == (ngx_socket_t) -1) {
+            // 上一个系统调用返回的错误码，即accept或accept4函数
             err = ngx_socket_errno;
-
+            // 没有完成三次握手的节点了，直接返回
             if (err == NGX_EAGAIN) {
                 ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, err,
                                "accept() not ready");
@@ -78,7 +80,7 @@ ngx_event_accept(ngx_event_t *ev)
 
             if (err == NGX_ECONNABORTED) {
                 level = NGX_LOG_ERR;
-
+            // 单个进程打开的文件描述数达到上限
             } else if (err == NGX_EMFILE || err == NGX_ENFILE) {
                 level = NGX_LOG_CRIT;
             }
@@ -86,7 +88,7 @@ ngx_event_accept(ngx_event_t *ev)
 #if (NGX_HAVE_ACCEPT4)
             ngx_log_error(level, ev->log, err,
                           use_accept4 ? "accept4() failed" : "accept() failed");
-
+            // 不支持accept4，置不支持标记
             if (use_accept4 && err == NGX_ENOSYS) {
                 use_accept4 = 0;
                 ngx_inherited_nonblocking = 0;
@@ -135,9 +137,9 @@ ngx_event_accept(ngx_event_t *ev)
 
         ngx_accept_disabled = ngx_cycle->connection_n / 8
                               - ngx_cycle->free_connection_n;
-
+        // 获取一个connection结构体数组
         c = ngx_get_connection(s, ev->log);
-
+        // 连接数已经满了，关闭socket
         if (c == NULL) {
             if (ngx_close_socket(s) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
@@ -146,7 +148,7 @@ ngx_event_accept(ngx_event_t *ev)
 
             return;
         }
-
+        // TCP
         c->type = SOCK_STREAM;
 
 #if (NGX_STAT_STUB)
@@ -168,7 +170,7 @@ ngx_event_accept(ngx_event_t *ev)
             ngx_close_accepted_connection(c);
             return;
         }
-
+        // 保存对端的地址信息
         ngx_memcpy(c->sockaddr, &sa, socklen);
 
         log = ngx_palloc(c->pool, sizeof(ngx_log_t));
@@ -206,12 +208,14 @@ ngx_event_accept(ngx_event_t *ev)
         c->send = ngx_send;
         c->recv_chain = ngx_recv_chain;
         c->send_chain = ngx_send_chain;
-
+        // 一个连接对应一个log对象
         c->log = log;
         c->pool->log = log;
 
         c->socklen = socklen;
+        // 保存listen结构体
         c->listening = ls;
+        // 服务端监听的地址
         c->local_sockaddr = ls->sockaddr;
         c->local_socklen = ls->socklen;
 
@@ -359,12 +363,12 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
     ngx_uint_t         i;
     ngx_listening_t   *ls;
     ngx_connection_t  *c;
-
+    // 允许读事件即允许accept
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
 
         c = ls[i].connection;
-
+        // 已经加过了
         if (c == NULL || c->read->active) {
             continue;
         }
@@ -389,7 +393,7 @@ ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all)
     for (i = 0; i < cycle->listening.nelts; i++) {
 
         c = ls[i].connection;
-
+        // 没有加入过，则不需要删除
         if (c == NULL || !c->read->active) {
             continue;
         }
@@ -417,7 +421,7 @@ ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all)
     return NGX_OK;
 }
 
-
+// 释放accept到的连接
 static void
 ngx_close_accepted_connection(ngx_connection_t *c)
 {
@@ -427,7 +431,7 @@ ngx_close_accepted_connection(ngx_connection_t *c)
 
     fd = c->fd;
     c->fd = (ngx_socket_t) -1;
-
+    // 关掉底层的socket
     if (ngx_close_socket(fd) == -1) {
         ngx_log_error(NGX_LOG_ALERT, c->log, ngx_socket_errno,
                       ngx_close_socket_n " failed");

@@ -431,12 +431,13 @@ extern ngx_os_io_t  ngx_io;
 
 // event模块的顶层配置
 typedef struct {
+    // 一个worker同时打开的连接数（包括作为服务器和客户端）
     ngx_uint_t    connections;
     ngx_uint_t    use;
 
     ngx_flag_t    multi_accept;
     ngx_flag_t    accept_mutex;
-
+    // 当另一个worker在accept的时候，延时多久再次竞争accept锁
     ngx_msec_t    accept_mutex_delay;
 
     u_char       *name;

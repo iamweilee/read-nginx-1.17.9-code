@@ -49,10 +49,10 @@ ngx_os_init(ngx_log_t *log)
     if (ngx_init_setproctitle(log) != NGX_OK) {
         return NGX_ERROR;
     }
-
+    // 一页大小
     ngx_pagesize = getpagesize();
     ngx_cacheline_size = NGX_CPU_CACHE_LINE;
-
+    // 2 ngx_pagesize_shift次方等于一页大小
     for (n = ngx_pagesize; n >>= 1; ngx_pagesize_shift++) { /* void */ }
 
 #if (NGX_HAVE_SC_NPROCESSORS_ONLN)

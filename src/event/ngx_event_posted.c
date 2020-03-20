@@ -20,7 +20,7 @@ ngx_event_process_posted(ngx_cycle_t *cycle, ngx_queue_t *posted)
 {
     ngx_queue_t  *q;
     ngx_event_t  *ev;
-
+    // 取出接口，从队列删除（在执行之前），执行
     while (!ngx_queue_empty(posted)) {
 
         q = ngx_queue_head(posted);

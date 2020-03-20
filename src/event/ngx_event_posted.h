@@ -13,7 +13,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 
-
+// 插入双向链表，打上标记
 #define ngx_post_event(ev, q)                                                 \
                                                                               \
     if (!(ev)->posted) {                                                      \
@@ -27,7 +27,7 @@
                        "update posted event %p", ev);                         \
     }
 
-
+// 从队列中删除
 #define ngx_delete_posted_event(ev)                                           \
                                                                               \
     (ev)->posted = 0;                                                         \

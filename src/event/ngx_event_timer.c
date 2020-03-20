@@ -28,7 +28,7 @@ ngx_event_timer_init(ngx_log_t *log)
     return NGX_OK;
 }
 
-
+// 找出有没有节点过期
 ngx_msec_t
 ngx_event_find_timer(void)
 {
@@ -49,7 +49,7 @@ ngx_event_find_timer(void)
     return (ngx_msec_t) (timer > 0 ? timer : 0);
 }
 
-
+// 找出过期的节点
 void
 ngx_event_expire_timers(void)
 {
@@ -68,11 +68,11 @@ ngx_event_expire_timers(void)
         node = ngx_rbtree_min(root, sentinel);
 
         /* node->key > ngx_current_msec */
-
+        // 最小的节点都没有过期，则整棵树都没有过期
         if ((ngx_msec_int_t) (node->key - ngx_current_msec) > 0) {
             return;
         }
-
+        // 通过结构体字段获取结构体首地址
         ev = (ngx_event_t *) ((char *) node - offsetof(ngx_event_t, timer));
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
@@ -86,11 +86,11 @@ ngx_event_expire_timers(void)
         ev->timer.right = NULL;
         ev->timer.parent = NULL;
 #endif
-
+        // 从红黑树中删除了
         ev->timer_set = 0;
-
+        // 标记事件超时
         ev->timedout = 1;
-
+        // 执行超时回调
         ev->handler(ev);
     }
 }

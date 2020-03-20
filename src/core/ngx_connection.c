@@ -1091,7 +1091,7 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
     cycle->listening.nelts = 0;
 }
 
-
+// 获取一个connection结构体关联到socket文件描述符
 ngx_connection_t *
 ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 {
@@ -1100,7 +1100,7 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
     ngx_connection_t  *c;
 
     /* disable warning: Win32 SOCKET is u_int while UNIX socket is int */
-
+    // 超过了打开文件的上限
     if (ngx_cycle->files && (ngx_uint_t) s >= ngx_cycle->files_n) {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
                       "the new socket has number %d, "
@@ -1123,14 +1123,15 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 
         return NULL;
     }
-
+    // 指向下一个connection结构体
     ngx_cycle->free_connections = c->data;
+    // 空闲节点数减一
     ngx_cycle->free_connection_n--;
-
+    // 保存文件描述符和connection结构体的关系
     if (ngx_cycle->files && ngx_cycle->files[s] == NULL) {
         ngx_cycle->files[s] = c;
     }
-
+    // 读写事件的结构体
     rev = c->read;
     wev = c->write;
 
@@ -1160,12 +1161,14 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
     return c;
 }
 
-
+// 释放一个connection结构体
 void
 ngx_free_connection(ngx_connection_t *c)
-{
+{   
+    // 头插法
     c->data = ngx_cycle->free_connections;
     ngx_cycle->free_connections = c;
+    // 空闲节点个数
     ngx_cycle->free_connection_n++;
 
     if (ngx_cycle->files && ngx_cycle->files[c->fd] == c) {

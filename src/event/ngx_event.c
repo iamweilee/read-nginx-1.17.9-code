@@ -214,16 +214,17 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 
 #endif
     }
-
+    // 开启
     if (ngx_use_accept_mutex) {
         if (ngx_accept_disabled > 0) {
             ngx_accept_disabled--;
 
         } else {
+            // 抢锁
             if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
                 return;
             }
-
+            // 抢到了锁则延迟处理accept返回的节点
             if (ngx_accept_mutex_held) {
                 flags |= NGX_POST_EVENTS;
 
@@ -1091,6 +1092,7 @@ ngx_event_use(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         module = cf->cycle->modules[m]->ctx;
         if (module->name->len == value[1].len) {
             if (ngx_strcmp(module->name->data, value[1].data) == 0) {
+                // 记录使用的模块的索引和名字
                 ecf->use = cf->cycle->modules[m]->ctx_index;
                 ecf->name = module->name->data;
 
@@ -1313,7 +1315,7 @@ ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf)
             }
 
             event_module = cycle->modules[i]->ctx;
-
+            // 过滤掉事件核心模块
             if (ngx_strcmp(event_module->name->data, event_core_name.data) == 0)
             {
                 continue;

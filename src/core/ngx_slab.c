@@ -48,7 +48,7 @@
 
 #define ngx_slab_page_prev(page)                                              \
     (ngx_slab_page_t *) ((page)->prev & ~NGX_SLAB_PAGE_MASK)
-
+// 算出第n个空闲块对应的地址，首先得到相差ngx_slab_page_t个数，乘以页大小得到相对偏移，加上开始地址
 #define ngx_slab_page_addr(pool, page)                                        \
     ((((page) - (pool)->pages) << ngx_pagesize_shift)                         \
      + (uintptr_t) (pool)->start)
@@ -106,7 +106,7 @@ ngx_slab_init(ngx_slab_pool_t *pool)
     ngx_slab_page_t  *slots, *page;
 
     pool->min_size = (size_t) 1 << pool->min_shift;
-
+    // poll后面是ngx_slab_page_t 
     slots = ngx_slab_slots(pool);
 
     p = (u_char *) slots;
@@ -147,11 +147,12 @@ ngx_slab_init(ngx_slab_pool_t *pool)
     page->slab = pages;
     page->next = &pool->free;
     page->prev = (uintptr_t) &pool->free;
-
+    //按页对齐
     pool->start = ngx_align_ptr(p + pages * sizeof(ngx_slab_page_t),
                                 ngx_pagesize);
-
+    // 重新计算页数，上面按照页对齐后，可能会有内存碎片，导致页数减少
     m = pages - (pool->end - pool->start) / ngx_pagesize;
+    // 页数减去m
     if (m > 0) {
         pages -= m;
         page->slab = pages;
@@ -208,6 +209,7 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
 
     if (size > pool->min_size) {
         shift = 1;
+        // 从0开始算，size需要减去1
         for (s = size - 1; s >>= 1; shift++) { /* void */ }
         slot = shift - pool->min_shift;
 
@@ -683,20 +685,24 @@ ngx_slab_alloc_pages(ngx_slab_pool_t *pool, ngx_uint_t pages)
     for (page = pool->free.next; page != &pool->free; page = page->next) {
 
         if (page->slab >= pages) {
-
+            // 还有多余的
             if (page->slab > pages) {
+                // 最后一项的prev指向，分配后第一个空闲项的首地址
                 page[page->slab - 1].prev = (uintptr_t) &page[pages];
-
+                // 把多余块的信息记录下来（记录在分配后的第一个空闲块）
                 page[pages].slab = page->slab - pages;
+                // 指向free
                 page[pages].next = page->next;
                 page[pages].prev = page->prev;
-
+                // free指针
                 p = (ngx_slab_page_t *) page->prev;
+                // 更新free指针指向新的第一个空闲块首地址
                 p->next = &page[pages];
                 page->next->prev = (uintptr_t) &page[pages];
 
             } else {
                 p = (ngx_slab_page_t *) page->prev;
+                // 指向下一个ngx_slab_page_t
                 p->next = page->next;
                 page->next->prev = page->prev;
             }
@@ -704,7 +710,7 @@ ngx_slab_alloc_pages(ngx_slab_pool_t *pool, ngx_uint_t pages)
             page->slab = pages | NGX_SLAB_PAGE_START;
             page->next = NULL;
             page->prev = NGX_SLAB_PAGE;
-
+            // 更新空闲项数量
             pool->pfree -= pages;
 
             if (--pages == 0) {
