@@ -402,7 +402,7 @@ ngx_http_set_predicate_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
-
+// 计算出变量个数
 ngx_uint_t
 ngx_http_script_variables_count(ngx_str_t *value)
 {

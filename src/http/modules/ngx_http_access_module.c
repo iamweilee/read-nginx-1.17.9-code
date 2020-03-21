@@ -129,9 +129,9 @@ ngx_http_access_handler(ngx_http_request_t *r)
     in_addr_t                    addr;
     struct sockaddr_in6         *sin6;
 #endif
-
+    // 拿到access模块的配置
     alcf = ngx_http_get_module_loc_conf(r, ngx_http_access_module);
-
+    // 判断协议簇
     switch (r->connection->sockaddr->sa_family) {
 
     case AF_INET:
@@ -311,9 +311,9 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     all = 0;
     ngx_memzero(&cidr, sizeof(ngx_cidr_t));
-
+    // 配置的参数
     value = cf->args->elts;
-
+    // 配置了all
     if (value[1].len == 3 && ngx_strcmp(value[1].data, "all") == 0) {
         all = 1;
 
@@ -323,6 +323,7 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
 
     } else {
+        // 解析ip
         rc = ngx_ptocidr(&value[1], &cidr);
 
         if (rc == NGX_ERROR) {
@@ -336,7 +337,7 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                          "low address bits of %V are meaningless", &value[1]);
         }
     }
-
+    //  ipv4
     if (cidr.family == AF_INET || all) {
 
         if (alcf->rules == NULL) {
@@ -394,7 +395,7 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (rule_un == NULL) {
             return NGX_CONF_ERROR;
         }
-
+        // unix域是针对所有的
         rule_un->deny = (value[0].data[0] == 'd') ? 1 : 0;
     }
 #endif
@@ -416,7 +417,7 @@ ngx_http_access_create_loc_conf(ngx_conf_t *cf)
     return conf;
 }
 
-
+// 自己没有定义则继承父配置
 static char *
 ngx_http_access_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
@@ -443,7 +444,7 @@ ngx_http_access_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 
-
+// 注册access phase的handle
 static ngx_int_t
 ngx_http_access_init(ngx_conf_t *cf)
 {

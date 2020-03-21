@@ -138,7 +138,7 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (ctx == NULL) {
         return NGX_CONF_ERROR;
     }
-
+    // http模块在core模块初始化的时候没有赋值，在这里才处理
     *(ngx_http_conf_ctx_t **) conf = ctx;
 
 
@@ -244,8 +244,9 @@ ngx_http_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
      * init http{} main_conf's, merge the server{}s' srv_conf's
      * and its location{}s' loc_conf's
      */
-
+    // http核心模块的配置
     cmcf = ctx->main_conf[ngx_http_core_module.ctx_index];
+    // 监听的服务器配置
     cscfp = cmcf->servers.elts;
 
     for (m = 0; cf->cycle->modules[m]; m++) {
@@ -343,7 +344,7 @@ failed:
     return rv;
 }
 
-
+// c初始化phase
 static ngx_int_t
 ngx_http_init_phases(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
 {
@@ -566,7 +567,7 @@ ngx_http_merge_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
     ngx_http_conf_ctx_t         *ctx, saved;
     ngx_http_core_loc_conf_t    *clcf;
     ngx_http_core_srv_conf_t   **cscfp;
-
+    // nginx配置文件中定义的server信息
     cscfp = cmcf->servers.elts;
     ctx = (ngx_http_conf_ctx_t *) cf->ctx;
     saved = *ctx;

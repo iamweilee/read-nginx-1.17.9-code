@@ -88,6 +88,7 @@ ngx_slab_sizes_init(void)
     ngx_uint_t  n;
 
     ngx_slab_max_size = ngx_pagesize / 2;
+    // 一页分成8 * sizeof(uintptr_t)块，每块大小是ngx_slab_exact_size，
     ngx_slab_exact_size = ngx_pagesize / (8 * sizeof(uintptr_t));
     // ngx_slab_exact_shift是static变量，初始化是0，算出是2的几次方
     for (n = ngx_slab_exact_size; n >>= 1; ngx_slab_exact_shift++) {
@@ -189,15 +190,16 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
     uintptr_t         p, m, mask, *bitmap;
     ngx_uint_t        i, n, slot, shift, map;
     ngx_slab_page_t  *page, *prev, *slots;
-
+    //  大于ngx_slab_max_size的在
     if (size > ngx_slab_max_size) {
 
         ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, ngx_cycle->log, 0,
                        "slab alloc: %uz", size);
-
+        // 分配n页，不够一页则多分配一页
         page = ngx_slab_alloc_pages(pool, (size >> ngx_pagesize_shift)
                                           + ((size % ngx_pagesize) ? 1 : 0));
         if (page) {
+            // 通过第n个ngx_slab_page_t找到对应的保存数据的首地址
             p = ngx_slab_page_addr(pool, page);
 
         } else {
@@ -206,10 +208,17 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
 
         goto done;
     }
-
+    // 大于min_zise的找对对应的slot，否则直接分配min_size，有内存碎片
     if (size > pool->min_size) {
+        /*
+            如果是奇数，即低位是1，不够2的倍数，也要多分配一个单位的内存
+            如果是偶数，即低位是0，预分配一个单位，见下面的size - 1
+        */
         shift = 1;
-        // 从0开始算，size需要减去1
+        /*
+            如果是奇数，先转成偶数，算出2的倍数，所以shift一开始要等于1，不够一个单位需要多分配一个单位
+            如果是偶数，减一，则位统一向右移动一位（少右移了一次，所以shift一开始等于1）。
+        */
         for (s = size - 1; s >>= 1; shift++) { /* void */ }
         slot = shift - pool->min_shift;
 
@@ -222,16 +231,16 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
 
     ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, ngx_cycle->log, 0,
                    "slab alloc: %uz slot: %ui", size, slot);
-
+    // 第一个slot首地址
     slots = ngx_slab_slots(pool);
     page = slots[slot].next;
 
     if (page->next != page) {
 
         if (shift < ngx_slab_exact_shift) {
-
+            // 找到分配的内存页首地址，前面用作位图
             bitmap = (uintptr_t *) ngx_slab_page_addr(pool, page);
-
+            // 
             map = (ngx_pagesize >> shift) / (8 * sizeof(uintptr_t));
 
             for (n = 0; n < map; n++) {
@@ -239,12 +248,13 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
                 if (bitmap[n] != NGX_SLAB_BUSY) {
 
                     for (m = 1, i = 0; m; m <<= 1, i++) {
+                        // bitmap[n]即第n个字节，m是第n个字节的第m位，已置位则跳过
                         if (bitmap[n] & m) {
                             continue;
                         }
-
+                        // 否则置位
                         bitmap[n] |= m;
-
+                        
                         i = (n * 8 * sizeof(uintptr_t) + i) << shift;
 
                         p = (uintptr_t) bitmap + i;
@@ -331,7 +341,7 @@ ngx_slab_alloc_locked(ngx_slab_pool_t *pool, size_t size)
         ngx_slab_error(pool, NGX_LOG_ALERT, "ngx_slab_alloc(): page is busy");
         ngx_debug_point();
     }
-
+    // 分配一页
     page = ngx_slab_alloc_pages(pool, 1);
 
     if (page) {

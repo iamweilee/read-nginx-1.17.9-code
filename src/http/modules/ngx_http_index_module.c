@@ -16,7 +16,7 @@ typedef struct {
     ngx_array_t             *values;
 } ngx_http_index_t;
 
-
+// 
 typedef struct {
     ngx_array_t             *indices;    /* array of ngx_http_index_t */
     size_t                   max_index_len;
@@ -108,15 +108,15 @@ ngx_http_index_handler(ngx_http_request_t *r)
     ngx_http_core_loc_conf_t     *clcf;
     ngx_http_index_loc_conf_t    *ilcf;
     ngx_http_script_len_code_pt   lcode;
-
+    // url不是以/结尾
     if (r->uri.data[r->uri.len - 1] != '/') {
         return NGX_DECLINED;
     }
-
+    // 只用于下面几个http方法
     if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD|NGX_HTTP_POST))) {
         return NGX_DECLINED;
     }
-
+    // 拿到两个模块的loc配置
     ilcf = ngx_http_get_module_loc_conf(r, ngx_http_index_module);
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
@@ -126,16 +126,16 @@ ngx_http_index_handler(ngx_http_request_t *r)
     name = NULL;
     /* suppress MSVC warning */
     path.data = NULL;
-
+    // 配置的index路径，即index 1 2 3中1，2，3对应的项
     index = ilcf->indices->elts;
     for (i = 0; i < ilcf->indices->nelts; i++) {
-
+        // 配置中没有变量
         if (index[i].lengths == NULL) {
-
+            // 绝对路径，重定向到新的URL
             if (index[i].name.data[0] == '/') {
                 return ngx_http_internal_redirect(r, &index[i].name, &r->args);
             }
-
+            // 配置中文件路径的最大长度
             reserve = ilcf->max_index_len;
             len = index[i].name.len;
 
@@ -400,7 +400,7 @@ ngx_http_index_create_loc_conf(ngx_conf_t *cf)
     return conf;
 }
 
-
+// 补偿处理
 static char *
 ngx_http_index_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
@@ -408,12 +408,12 @@ ngx_http_index_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_index_loc_conf_t  *conf = child;
 
     ngx_http_index_t  *index;
-
+    // 没有定义则继承父配置
     if (conf->indices == NULL) {
         conf->indices = prev->indices;
         conf->max_index_len = prev->max_index_len;
     }
-
+    // 都没有定义，则取默认的
     if (conf->indices == NULL) {
         conf->indices = ngx_array_create(cf->pool, 1, sizeof(ngx_http_index_t));
         if (conf->indices == NULL) {
@@ -438,7 +438,7 @@ ngx_http_index_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 
-
+// 注册CONTENT_PHASE的handle
 static ngx_int_t
 ngx_http_index_init(ngx_conf_t *cf)
 {
@@ -469,7 +469,7 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t                  i, n;
     ngx_http_index_t           *index;
     ngx_http_script_compile_t   sc;
-
+    // 懒初始化
     if (ilcf->indices == NULL) {
         ilcf->indices = ngx_array_create(cf->pool, 2, sizeof(ngx_http_index_t));
         if (ilcf->indices == NULL) {
@@ -480,7 +480,7 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     for (i = 1; i < cf->args->nelts; i++) {
-
+        // 最后一个文件才能是绝对路径
         if (value[i].data[0] == '/' && i != cf->args->nelts - 1) {
             ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                                "only the last index in \"index\" directive "
@@ -498,19 +498,20 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (index == NULL) {
             return NGX_CONF_ERROR;
         }
-
+        // 记录下来
         index->name.len = value[i].len;
         index->name.data = value[i].data;
         index->lengths = NULL;
         index->values = NULL;
-
+        // 配置中有多少个变量
         n = ngx_http_script_variables_count(&value[i]);
-
+        // 没有变量
         if (n == 0) {
+            // 更新max_index_len，即文件路径长度的最大值
             if (ilcf->max_index_len < index->name.len) {
                 ilcf->max_index_len = index->name.len;
             }
-
+            // 是绝对路径
             if (index->name.data[0] == '/') {
                 continue;
             }
@@ -522,7 +523,7 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
-
+        // 解析变量
         sc.cf = cf;
         sc.source = &value[i];
         sc.lengths = &index->lengths;
