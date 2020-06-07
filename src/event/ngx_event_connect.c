@@ -16,7 +16,7 @@ static ngx_int_t ngx_event_connect_set_transparent(ngx_peer_connection_t *pc,
     ngx_socket_t s);
 #endif
 
-
+// 发起连接
 ngx_int_t
 ngx_event_connect_peer(ngx_peer_connection_t *pc)
 {
@@ -37,7 +37,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     }
 
     type = (pc->type ? pc->type : SOCK_STREAM);
-
+    // 拿到一个socket
     s = ngx_socket(pc->sockaddr->sa_family, type, 0);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0, "%s socket %d",
@@ -49,7 +49,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         return NGX_ERROR;
     }
 
-
+    // 申请一个表示连接的结构体
     c = ngx_get_connection(s, pc->log);
 
     if (c == NULL) {
@@ -62,7 +62,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     }
 
     c->type = type;
-
+    // 设置传输层的接收缓冲区
     if (pc->rcvbuf) {
         if (setsockopt(s, SOL_SOCKET, SO_RCVBUF,
                        (const void *) &pc->rcvbuf, sizeof(int)) == -1)
@@ -72,7 +72,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
             goto failed;
         }
     }
-
+    // 开启长连接
     if (pc->so_keepalive) {
         value = 1;
 
@@ -84,7 +84,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
                           "setsockopt(SO_KEEPALIVE) failed, ignored");
         }
     }
-
+    // 非阻塞
     if (ngx_nonblocking(s) == -1) {
         ngx_log_error(NGX_LOG_ALERT, pc->log, ngx_socket_errno,
                       ngx_nonblocking_n " failed");
@@ -148,7 +148,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         }
 
 #endif
-
+        // 绑定地址信息
         if (bind(s, pc->local->sockaddr, pc->local->socklen) == -1) {
             ngx_log_error(NGX_LOG_CRIT, pc->log, ngx_socket_errno,
                           "bind(%V) failed", &pc->local->name);
@@ -156,7 +156,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
             goto failed;
         }
     }
-
+    // 设置处理函数
     if (type == SOCK_STREAM) {
         c->recv = ngx_recv;
         c->send = ngx_send;
@@ -164,7 +164,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         c->send_chain = ngx_send_chain;
 
         c->sendfile = 1;
-
+        // unix域
         if (pc->sockaddr->sa_family == AF_UNIX) {
             c->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
             c->tcp_nodelay = NGX_TCP_NODELAY_DISABLED;
@@ -201,7 +201,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pc->log, 0,
                    "connect to %V, fd:%d #%uA", pc->name, s, c->number);
-
+    // 发起连接
     rc = connect(s, pc->sockaddr, pc->socklen);
 
     if (rc == -1) {
@@ -296,7 +296,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 
         event = NGX_LEVEL_EVENT;
     }
-
+    // 等待可读事件，即建立连接成功
     if (ngx_add_event(rev, NGX_READ_EVENT, event) != NGX_OK) {
         goto failed;
     }

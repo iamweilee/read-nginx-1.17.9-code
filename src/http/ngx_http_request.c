@@ -202,7 +202,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
     { ngx_null_string, 0, NULL }
 };
 
-
+// 有连接到来时的处理函数
 void
 ngx_http_init_connection(ngx_connection_t *c)
 {
@@ -507,12 +507,12 @@ ngx_http_create_request(ngx_connection_t *c)
     ngx_http_request_t        *r;
     ngx_http_log_ctx_t        *ctx;
     ngx_http_core_loc_conf_t  *clcf;
-
+    // 申请一个request结构体
     r = ngx_http_alloc_request(c);
     if (r == NULL) {
         return NULL;
     }
-
+    // 本连接中的请求个数
     c->requests++;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -532,7 +532,7 @@ ngx_http_create_request(ngx_connection_t *c)
     return r;
 }
 
-
+// 申请一个request结构体
 static ngx_http_request_t *
 ngx_http_alloc_request(ngx_connection_t *c)
 {

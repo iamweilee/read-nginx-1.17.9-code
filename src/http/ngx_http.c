@@ -344,7 +344,7 @@ failed:
     return rv;
 }
 
-// c初始化phase
+// 初始化各个phase的处理队列
 static ngx_int_t
 ngx_http_init_phases(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf)
 {
