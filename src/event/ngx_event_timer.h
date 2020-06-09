@@ -54,7 +54,7 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
     ngx_msec_int_t  diff;
 
     key = ngx_current_msec + timer;
-
+    // 之前已经在红黑树里了
     if (ev->timer_set) {
 
         /*
@@ -62,19 +62,19 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
          * value is less than NGX_TIMER_LAZY_DELAY milliseconds: this allows
          * to minimize the rbtree operations for fast connections.
          */
-
+        // 计算出时间差
         diff = (ngx_msec_int_t) (key - ev->timer.key);
-
+        // 在允许的精度范围
         if (ngx_abs(diff) < NGX_TIMER_LAZY_DELAY) {
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                            "event timer: %d, old: %M, new: %M",
                             ngx_event_ident(ev->data), ev->timer.key, key);
             return;
         }
-
+        // 否则先把之前的定时器删除
         ngx_del_timer(ev);
     }
-
+    // 准备插入新的定时器到红黑树
     ev->timer.key = key;
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
@@ -82,7 +82,7 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
                     ngx_event_ident(ev->data), timer, ev->timer.key);
 
     ngx_rbtree_insert(&ngx_event_timer_rbtree, &ev->timer);
-
+    // 设置已经插入红黑树标记
     ev->timer_set = 1;
 }
 

@@ -41,12 +41,17 @@ ngx_event_accept(ngx_event_t *ev)
     }
 
     ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
-
+    /*
+        The directive is ignored if kqueue connection processing method is used, 
+        because it reports the number of new connections waiting to be accepted.
+    */
+    //  事件驱动模块如果不是kqueue的话，就使用multi_accept（1|0），如果是kqueue则kqueue会设置available的值，即等待accept的个数
     if (!(ngx_event_flags & NGX_USE_KQUEUE_EVENT)) {
         ev->available = ecf->multi_accept;
     }
-
+    // 对应的ngx_connection_t
     lc = ev->data;
+    // 对应的ngx_listening_t，即来自哪个监听的socket
     ls = lc->listening;
     ev->ready = 0;
 
@@ -65,11 +70,11 @@ ngx_event_accept(ngx_event_t *ev)
 #else
         s = accept(lc->fd, &sa.sockaddr, &socklen);
 #endif
-        // 没有拿到有效的连接 
+        // 没有拿到有效的连接，下面判断错误码看是什么原因 
         if (s == (ngx_socket_t) -1) {
             // 上一个系统调用返回的错误码，即accept或accept4函数
             err = ngx_socket_errno;
-            // 没有完成三次握手的节点了，直接返回
+            // 没有完成三次握手的节点了，说明没有待accept的节点了，直接返回
             if (err == NGX_EAGAIN) {
                 ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, err,
                                "accept() not ready");
@@ -77,7 +82,7 @@ ngx_event_accept(ngx_event_t *ev)
             }
 
             level = NGX_LOG_ALERT;
-
+            // 连接被终止，忽略
             if (err == NGX_ECONNABORTED) {
                 level = NGX_LOG_ERR;
             // 单个进程打开的文件描述数达到上限
@@ -97,47 +102,56 @@ ngx_event_accept(ngx_event_t *ev)
 #else
             ngx_log_error(level, ev->log, err, "accept() failed");
 #endif
-
+            // 连接被终止
             if (err == NGX_ECONNABORTED) {
+                // kqueue的话，待accept节点数减一，继续accept下一个
                 if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
                     ev->available--;
                 }
-
+                // 非kqueue则继续accept
                 if (ev->available) {
                     continue;
                 }
             }
-
+            // 进程打开的文件得到上限
             if (err == NGX_EMFILE || err == NGX_ENFILE) {
+                // 解除监听socket的等待可读事件，即暂时不处理连接了
                 if (ngx_disable_accept_events((ngx_cycle_t *) ngx_cycle, 1)
                     != NGX_OK)
                 {
                     return;
                 }
-
+                // 如果使用了互斥accept锁，并且占了锁，则释放锁，否则其他进程accept不了
                 if (ngx_use_accept_mutex) {
+                    // 占了锁
                     if (ngx_accept_mutex_held) {
+                        // 释放锁
                         ngx_shmtx_unlock(&ngx_accept_mutex);
+                        // 标记释放了锁
                         ngx_accept_mutex_held = 0;
                     }
-
+                    // 
                     ngx_accept_disabled = 1;
 
                 } else {
+                    // accept失败，迟点再accept
                     ngx_add_timer(ev, ecf->accept_mutex_delay);
                 }
             }
-
+            // 返回，因为不需要accept了
             return;
         }
 
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_accepted, 1);
 #endif
-
+        /*
+            如果ngx_accept_disabled大于0说明可用于接收连接的空闲节点数小于1/8的总节点数，
+            则暂时不能accept了，即负载均衡。等待空闲节点数大于1/8时再accept，见ngx_event.c的ngx_process_events_and_timers
+        */
         ngx_accept_disabled = ngx_cycle->connection_n / 8
                               - ngx_cycle->free_connection_n;
-        // 获取一个connection结构体数组
+        // 为同学socket，获取一个connection结构体数组
         c = ngx_get_connection(s, ev->log);
         // 连接数已经满了，关闭socket
         if (c == NULL) {
@@ -180,7 +194,7 @@ ngx_event_accept(ngx_event_t *ev)
         }
 
         /* set a blocking mode for iocp and non-blocking mode for others */
-
+        // 为通信socket设置阻塞模式
         if (ngx_inherited_nonblocking) {
             if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
                 if (ngx_blocking(s) == -1) {
@@ -203,7 +217,7 @@ ngx_event_accept(ngx_event_t *ev)
         }
 
         *log = ls->log;
-
+        // 为通信socket设置读写数据的函数，由事件驱动模块提供
         c->recv = ngx_recv;
         c->send = ngx_send;
         c->recv_chain = ngx_recv_chain;
@@ -213,7 +227,7 @@ ngx_event_accept(ngx_event_t *ev)
         c->pool->log = log;
 
         c->socklen = socklen;
-        // 保存listen结构体
+        // 标识该连接来自哪个监听的socket，即ngx_listening_t
         c->listening = ls;
         // 服务端监听的地址
         c->local_sockaddr = ls->sockaddr;
@@ -229,7 +243,7 @@ ngx_event_accept(ngx_event_t *ev)
 #endif
         }
 #endif
-
+        // 读写事件的结构体
         rev = c->read;
         wev = c->write;
 
@@ -238,9 +252,10 @@ ngx_event_accept(ngx_event_t *ev)
         if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
             rev->ready = 1;
         }
-
+        // 延迟accept
         if (ev->deferred_accept) {
             rev->ready = 1;
+            // kqueue的话把available变成1，下面会再减去1，即退出while循环
 #if (NGX_HAVE_KQUEUE || NGX_HAVE_EPOLLRDHUP)
             rev->available = 1;
 #endif
@@ -298,7 +313,7 @@ ngx_event_accept(ngx_event_t *ev)
 
         }
 #endif
-
+        // 如果事件驱动模块不是epoll
         if (ngx_add_conn && (ngx_event_flags & NGX_USE_EPOLL_EVENT) == 0) {
             if (ngx_add_conn(c) == NGX_ERROR) {
                 ngx_close_accepted_connection(c);
@@ -308,20 +323,21 @@ ngx_event_accept(ngx_event_t *ev)
 
         log->data = NULL;
         log->handler = NULL;
-
+        // 执行连接到来时的回调，对于http模块是ngx_http_init_connection，会注册等待读事件，等待数据到来
         ls->handler(c);
-
+        // 如果是kqueue则减去1（是个整数），否则不需要处理，因为他是on|off
         if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
             ev->available--;
         }
 
-    } while (ev->available);
+    } while (ev->available); // 是否连续accept（尽可能），可能会没有等待accept的节点了
 }
 
 
 ngx_int_t
 ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
-{
+{   
+    // 尝试加锁
     if (ngx_shmtx_trylock(&ngx_accept_mutex)) {
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -337,6 +353,7 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
         }
 
         ngx_accept_events = 0;
+        // 标记加锁成功
         ngx_accept_mutex_held = 1;
 
         return NGX_OK;
@@ -356,14 +373,14 @@ ngx_trylock_accept_mutex(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
-
+// 注册监听socket的读事件
 ngx_int_t
 ngx_enable_accept_events(ngx_cycle_t *cycle)
 {
     ngx_uint_t         i;
     ngx_listening_t   *ls;
     ngx_connection_t  *c;
-    // 允许读事件即允许accept
+    // 允许读事件，即允许accept
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
 
@@ -372,7 +389,7 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
         if (c == NULL || c->read->active) {
             continue;
         }
-
+        // 注册读事件
         if (ngx_add_event(c->read, NGX_READ_EVENT, 0) == NGX_ERROR) {
             return NGX_ERROR;
         }
@@ -381,7 +398,7 @@ ngx_enable_accept_events(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
-
+// 解除监听socket的读事件
 static ngx_int_t
 ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all)
 {

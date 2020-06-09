@@ -21,24 +21,26 @@ static ngx_uint_t ngx_module_ctx_index(ngx_cycle_t *cycle, ngx_uint_t type,
 ngx_uint_t         ngx_max_module;
 static ngx_uint_t  ngx_modules_n;
 
-
+// 初始化module的某些字段
 ngx_int_t
 ngx_preinit_modules(void)
 {
     ngx_uint_t  i;
 
     for (i = 0; ngx_modules[i]; i++) {
+        // 索引和名字，ngx_modules和ngx_module_names在编译nginx后生成
         ngx_modules[i]->index = i;
         ngx_modules[i]->name = ngx_module_names[i];
     }
-
+    // nginx编译后的模块数
     ngx_modules_n = i;
+    // 加上动态加载模块的阈值得到最大模块数
     ngx_max_module = ngx_modules_n + NGX_MAX_DYNAMIC_MODULES;
 
     return NGX_OK;
 }
 
-// 复制modules信息和modules数量到cycle
+// 复制modules信息和modules数量到cycle。cycle->modules还有一些空的slot
 ngx_int_t
 ngx_cycle_modules(ngx_cycle_t *cycle)
 {
@@ -61,7 +63,7 @@ ngx_cycle_modules(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
-
+// 执行每个module的init_module钩子
 ngx_int_t
 ngx_init_modules(ngx_cycle_t *cycle)
 {
@@ -78,7 +80,7 @@ ngx_init_modules(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
-
+// 找到类型为type的模块数
 ngx_int_t
 ngx_count_modules(ngx_cycle_t *cycle, ngx_uint_t type)
 {
@@ -96,15 +98,15 @@ ngx_count_modules(ngx_cycle_t *cycle, ngx_uint_t type)
         if (module->type != type) {
             continue;
         }
-
+        // 该模块已经设置了索引
         if (module->ctx_index != NGX_MODULE_UNSET_INDEX) {
 
             /* if ctx_index was assigned, preserve it */
-
+            // 记录最大值
             if (module->ctx_index > max) {
                 max = module->ctx_index;
             }
-
+            // 记录下一个理论上可用的索引
             if (module->ctx_index == next) {
                 next++;
             }
@@ -113,9 +115,9 @@ ngx_count_modules(ngx_cycle_t *cycle, ngx_uint_t type)
         }
 
         /* search for some free index */
-
+        // 找一个对于等于next的索引
         module->ctx_index = ngx_module_ctx_index(cycle, type, next);
-
+        // 可能会大于max
         if (module->ctx_index > max) {
             max = module->ctx_index;
         }
@@ -275,7 +277,7 @@ ngx_add_module(ngx_conf_t *cf, ngx_str_t *file, ngx_module_t *module,
     return NGX_OK;
 }
 
-
+// 从cycle->modules中找到一个大于等于0的索引
 static ngx_uint_t
 ngx_module_index(ngx_cycle_t *cycle)
 {
@@ -314,7 +316,7 @@ again:
     return index;
 }
 
-
+// 从cycle->modules中找到一个大于等于index的索引
 static ngx_uint_t
 ngx_module_ctx_index(ngx_cycle_t *cycle, ngx_uint_t type, ngx_uint_t index)
 {

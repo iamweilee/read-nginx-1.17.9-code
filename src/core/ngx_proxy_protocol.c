@@ -145,7 +145,7 @@ invalid:
     return NULL;
 }
 
-
+// 读取一段字符串到addr（需要分配内存）中，返回下一个非空字符的地址
 static u_char *
 ngx_proxy_protocol_read_addr(ngx_connection_t *c, u_char *p, u_char *last,
     ngx_str_t *addr)
@@ -188,7 +188,7 @@ ngx_proxy_protocol_read_addr(ngx_connection_t *c, u_char *p, u_char *last,
     return p;
 }
 
-
+// 读取端口到port中，返回下一个非空字符的地址
 static u_char *
 ngx_proxy_protocol_read_port(u_char *p, u_char *last, in_port_t *port,
     u_char sep)
@@ -221,7 +221,7 @@ ngx_proxy_protocol_read_port(u_char *p, u_char *last, in_port_t *port,
     return p;
 }
 
-
+// 写入端口到buf中
 u_char *
 ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
 {

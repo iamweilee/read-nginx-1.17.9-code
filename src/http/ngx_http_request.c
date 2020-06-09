@@ -360,7 +360,7 @@ ngx_http_init_connection(ngx_connection_t *c)
         rev->handler(rev);
         return;
     }
-
+    // 建立连接后，post_accept_timeout这么长时间还没有数据到来则超时
     ngx_add_timer(rev, c->listening->post_accept_timeout);
     ngx_reusable_connection(c, 1);
 
@@ -370,7 +370,7 @@ ngx_http_init_connection(ngx_connection_t *c)
     }
 }
 
-
+// 连接上有请求到来时的处理函数
 static void
 ngx_http_wait_request_handler(ngx_event_t *rev)
 {
@@ -385,13 +385,13 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
     c = rev->data;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http wait request handler");
-
+    // 数据到来已经超时，关闭连接
     if (rev->timedout) {
         ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
         ngx_http_close_connection(c);
         return;
     }
-
+    // 连接关闭了
     if (c->close) {
         ngx_http_close_connection(c);
         return;
@@ -399,7 +399,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
 
     hc = c->data;
     cscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_core_module);
-
+    // 分配内存接收数据，如果需要的话
     size = cscf->client_header_buffer_size;
 
     b = c->buffer;
@@ -425,7 +425,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
         b->last = b->start;
         b->end = b->last + size;
     }
-
+    // 接收数据
     n = c->recv(c, b->last, size);
 
     if (n == NGX_AGAIN) {
@@ -462,7 +462,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
         ngx_http_close_connection(c);
         return;
     }
-
+    // 更新可写指针的位置
     b->last += n;
 
     if (hc->proxy_protocol) {
@@ -495,7 +495,7 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
         ngx_http_close_connection(c);
         return;
     }
-
+    // 准备处理请求
     rev->handler = ngx_http_process_request_line;
     ngx_http_process_request_line(rev);
 }
@@ -1033,7 +1033,7 @@ failed:
 
 #endif
 
-
+// 处理http数据包的请求报文
 static void
 ngx_http_process_request_line(ngx_event_t *rev)
 {
@@ -1067,9 +1067,9 @@ ngx_http_process_request_line(ngx_event_t *rev)
                 break;
             }
         }
-
+        // 解析http请求行
         rc = ngx_http_parse_request_line(r, r->header_in);
-
+        // 解析完
         if (rc == NGX_OK) {
 
             /* the request line has been parsed successfully */
@@ -1146,7 +1146,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
             }
 
             c->log->action = "reading client request headers";
-
+            // 开始处理http头
             rev->handler = ngx_http_process_request_headers;
             ngx_http_process_request_headers(rev);
 

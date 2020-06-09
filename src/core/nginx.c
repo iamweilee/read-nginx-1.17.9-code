@@ -1007,7 +1007,7 @@ ngx_process_options(ngx_cycle_t *cycle)
     return NGX_OK;
 }
 
-
+// 创建保存ngx_core_module模块配置的结构体
 static void *
 ngx_core_module_create_conf(ngx_cycle_t *cycle)
 {
@@ -1052,12 +1052,12 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
     return ccf;
 }
 
-
+// 解析完配置后，处理保存ngx_core_module模块配置的结构体
 static char *
 ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_core_conf_t  *ccf = conf;
-
+    // 如果没有定义则默认值是1
     ngx_conf_init_value(ccf->daemon, 1);
     ngx_conf_init_value(ccf->master, 1);
     ngx_conf_init_msec_value(ccf->timer_resolution, 0);
@@ -1204,7 +1204,7 @@ ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (ccf->user != (uid_t) NGX_CONF_UNSET_UINT) {
         return "is duplicate";
     }
-
+    // 获取有效用户id
     if (geteuid() != 0) {
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                            "the \"user\" directive makes sense only "

@@ -97,7 +97,7 @@ static ngx_core_module_t  ngx_events_module_ctx = {
     ngx_event_init_conf
 };
 
-
+// 核心模块
 ngx_module_t  ngx_events_module = {
     NGX_MODULE_V1,
     &ngx_events_module_ctx,                /* module context */
@@ -173,7 +173,7 @@ static ngx_event_module_t  ngx_event_core_module_ctx = {
     { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
 };
 
-
+// 事件模块的子模块
 ngx_module_t  ngx_event_core_module = {
     NGX_MODULE_V1,
     &ngx_event_core_module_ctx,            /* module context */
@@ -216,6 +216,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
     }
     // 开启
     if (ngx_use_accept_mutex) {
+        // 不能accept
         if (ngx_accept_disabled > 0) {
             ngx_accept_disabled--;
 
@@ -412,7 +413,7 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
     return NGX_OK;
 }
 
-
+// 初始化核心事件模块的配置
 static char *
 ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 {

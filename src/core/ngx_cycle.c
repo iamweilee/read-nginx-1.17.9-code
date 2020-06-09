@@ -81,7 +81,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->pool = pool;
     cycle->log = log;
     cycle->old_cycle = old_cycle;
-
+    // 配置文件的路径
     cycle->conf_prefix.len = old_cycle->conf_prefix.len;
     cycle->conf_prefix.data = ngx_pstrdup(pool, &old_cycle->conf_prefix);
     if (cycle->conf_prefix.data == NULL) {
@@ -95,7 +95,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         ngx_destroy_pool(pool);
         return NULL;
     }
-
+    // 配置文件名
     cycle->conf_file.len = old_cycle->conf_file.len;
     cycle->conf_file.data = ngx_pnalloc(pool, old_cycle->conf_file.len + 1);
     if (cycle->conf_file.data == NULL) {
@@ -104,7 +104,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
     ngx_cpystrn(cycle->conf_file.data, old_cycle->conf_file.data,
                 old_cycle->conf_file.len + 1);
-
+    // 启动参数
     cycle->conf_param.len = old_cycle->conf_param.len;
     cycle->conf_param.data = ngx_pstrdup(pool, &old_cycle->conf_param);
     if (cycle->conf_param.data == NULL) {
@@ -218,7 +218,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         return NULL;
     }
 
-
+    // 每个模块申请保存数据的内存
     for (i = 0; cycle->modules[i]; i++) {
         if (cycle->modules[i]->type != NGX_CORE_MODULE) {
             continue;
@@ -271,18 +271,18 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         ngx_destroy_cycle_pools(&conf);
         return NULL;
     }
-
+    // 解析配置文件，
     if (ngx_conf_parse(&conf, &cycle->conf_file) != NGX_CONF_OK) {
         environ = senv;
         ngx_destroy_cycle_pools(&conf);
         return NULL;
     }
-
+    // 解析完了
     if (ngx_test_config && !ngx_quiet_mode) {
         ngx_log_stderr(0, "the configuration file %s syntax is ok",
                        cycle->conf_file.data);
     }
-
+    // 每个模块处理自己的配置
     for (i = 0; cycle->modules[i]; i++) {
         if (cycle->modules[i]->type != NGX_CORE_MODULE) {
             continue;
@@ -355,7 +355,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     part = &cycle->open_files.part;
     file = part->elts;
-
+    // 打开文件
     for (i = 0; /* void */ ; i++) {
 
         if (i >= part->nelts) {
@@ -405,7 +405,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     part = &cycle->shared_memory.part;
     shm_zone = part->elts;
-
+    // 申请共享内存
     for (i = 0; /* void */ ; i++) {
 
         if (i >= part->nelts) {
@@ -634,7 +634,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     opart = &old_cycle->shared_memory.part;
     oshm_zone = opart->elts;
-
+    // 释放旧的共享内存
     for (i = 0; /* void */ ; i++) {
 
         if (i >= opart->nelts) {
@@ -693,7 +693,7 @@ old_shm_zone_done:
 
 
     /* close the unnecessary listening sockets */
-
+    // 关闭旧的文件描述符
     ls = old_cycle->listening.elts;
     for (i = 0; i < old_cycle->listening.nelts; i++) {
 
@@ -731,7 +731,7 @@ old_shm_zone_done:
 
     part = &old_cycle->open_files.part;
     file = part->elts;
-
+    // 关闭旧的文件描述符
     for (i = 0; /* void */ ; i++) {
 
         if (i >= part->nelts) {

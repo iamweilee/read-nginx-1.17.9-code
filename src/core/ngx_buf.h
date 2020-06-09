@@ -18,14 +18,17 @@ typedef void *            ngx_buf_tag_t;
 typedef struct ngx_buf_s  ngx_buf_t;
 
 struct ngx_buf_s {
+    // 当前有效首地址末地址
     u_char          *pos;
     u_char          *last;
+    // 对应文件的首末地址
     off_t            file_pos;
     off_t            file_last;
-
+    // buf对应一块内容，start和end代表首地址和末地址
     u_char          *start;         /* start of buffer */
     u_char          *end;           /* end of buffer */
     ngx_buf_tag_t    tag;
+    // 关联的文件信息
     ngx_file_t      *file;
     ngx_buf_t       *shadow;
 
@@ -55,7 +58,7 @@ struct ngx_buf_s {
     /* STUB */ int   num;
 };
 
-// buflianb
+// buf链
 struct ngx_chain_s {
     ngx_buf_t    *buf;
     ngx_chain_t  *next;

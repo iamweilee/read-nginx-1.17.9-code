@@ -318,7 +318,7 @@ failed:
 
 #endif
 
-
+// event子模块初始化时执行
 static ngx_int_t
 ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 {
@@ -349,12 +349,13 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
         ngx_epoll_test_rdhup(cycle);
 #endif
     }
-
+    // nevents初始化为0，在epoll_wait返回时赋值
     if (nevents < epcf->events) {
+        // event_list初始化为NULL，在epoll_wait返回时赋值
         if (event_list) {
             ngx_free(event_list);
         }
-
+        // 分配内存
         event_list = ngx_alloc(sizeof(struct epoll_event) * epcf->events,
                                cycle->log);
         if (event_list == NULL) {
@@ -602,7 +603,7 @@ ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
         events = EPOLLOUT;
 #endif
     }
-
+    // 已经注册到epoll了，则修改，否则新增，读写事件对应两个结构体，但是对应一个epoll的event结构体
     if (e->active) {
         op = EPOLL_CTL_MOD;
         events |= prev;
@@ -618,18 +619,19 @@ ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 #endif
 
     ee.events = events | (uint32_t) flags;
+    // 记录上下文
     ee.data.ptr = (void *) ((uintptr_t) c | ev->instance);
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, ev->log, 0,
                    "epoll add event: fd:%d op:%d ev:%08XD",
                    c->fd, op, ee.events);
-
+    // 操作epoll
     if (epoll_ctl(ep, op, c->fd, &ee) == -1) {
         ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
                       "epoll_ctl(%d, %d) failed", op, c->fd);
         return NGX_ERROR;
     }
-
+    // 标记已经在epoll
     ev->active = 1;
 #if 0
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
@@ -653,7 +655,7 @@ ngx_epoll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
      * it from its queue, so we do not need to delete explicitly the event
      * before the closing the file descriptor
      */
-
+    // NGX_CLOSE_EVENT代表关闭文件，epoll会自动删除对应的事件节点，所以这里只需置active为0
     if (flags & NGX_CLOSE_EVENT) {
         ev->active = 0;
         return NGX_OK;
@@ -669,7 +671,7 @@ ngx_epoll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
         e = c->read;
         prev = EPOLLIN|EPOLLRDHUP;
     }
-
+    // 如果还有感兴趣的事件，则修改，否则删除
     if (e->active) {
         op = EPOLL_CTL_MOD;
         ee.events = prev | (uint32_t) flags;
@@ -696,7 +698,7 @@ ngx_epoll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
     return NGX_OK;
 }
 
-
+// 在epoll中注册连接的事件，读写等
 static ngx_int_t
 ngx_epoll_add_connection(ngx_connection_t *c)
 {
@@ -720,7 +722,7 @@ ngx_epoll_add_connection(ngx_connection_t *c)
     return NGX_OK;
 }
 
-
+// 从epoll中删除连接对应的事件
 static ngx_int_t
 ngx_epoll_del_connection(ngx_connection_t *c, ngx_uint_t flags)
 {
@@ -852,7 +854,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
                            "epoll: stale event %p", c);
             continue;
         }
-
+        // 该fd触发的事件
         revents = event_list[i].events;
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
@@ -879,7 +881,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
                           c->fd, revents);
         }
 #endif
-
+        // 注册可读事件
         if ((revents & EPOLLIN) && rev->active) {
 
 #if (NGX_HAVE_EPOLLRDHUP)
@@ -890,8 +892,9 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
             rev->ready = 1;
             rev->available = -1;
-
+            // 设置post标记则先排队，否则直接执行回调
             if (flags & NGX_POST_EVENTS) {
+                // accept为1说明是监听socket
                 queue = rev->accept ? &ngx_posted_accept_events
                                     : &ngx_posted_events;
 
@@ -903,7 +906,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
         }
 
         wev = c->write;
-
+        // 可写事件
         if ((revents & EPOLLOUT) && wev->active) {
 
             if (c->fd == -1 || wev->instance != instance) {
@@ -1021,7 +1024,7 @@ ngx_epoll_eventfd_handler(ngx_event_t *ev)
 
 #endif
 
-
+// 创建保存epoll配置的结构体
 static void *
 ngx_epoll_create_conf(ngx_cycle_t *cycle)
 {
