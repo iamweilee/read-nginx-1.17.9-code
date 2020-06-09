@@ -35,7 +35,7 @@ ngx_event_process_posted(ngx_cycle_t *cycle, ngx_queue_t *posted)
     }
 }
 
-
+// 把next队列追加到post队列中
 void
 ngx_event_move_posted_next(ngx_cycle_t *cycle)
 {

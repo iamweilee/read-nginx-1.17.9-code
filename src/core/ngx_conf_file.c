@@ -600,7 +600,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
                                    n, size);
                 return NGX_ERROR;
             }
-
+            // 更新位置
             b->pos = b->start + len;
             b->last = b->pos + n;
             start = b->start;
@@ -609,7 +609,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
                 dump->last = ngx_cpymem(dump->last, b->pos, size);
             }
         }
-
+        // 开始遍历字符
         ch = *b->pos++;
 
         if (ch == LF) {

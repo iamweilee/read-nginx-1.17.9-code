@@ -177,11 +177,11 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
             live = ngx_reap_children(cycle);
         }
-        // 处理子进程退出
+        // 处理主进程退出，设置了ngx_terminate并且子进程都退出了
         if (!live && (ngx_terminate || ngx_quit)) {
             ngx_master_process_exit(cycle);
         }
-        // 
+        // 收到了终止信号
         if (ngx_terminate) {
             if (delay == 0) {
                 delay = 50;
@@ -193,7 +193,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             }
 
             sigio = ccf->worker_processes + 2 /* cache processes */;
-
+            // 杀死子进程
             if (delay > 1000) {
                 ngx_signal_worker_processes(cycle, SIGKILL);
             } else {
@@ -455,7 +455,7 @@ ngx_pass_open_channel(ngx_cycle_t *cycle, ngx_channel_t *ch)
     }
 }
 
-
+// 通知子进程退出
 static void
 ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 {
@@ -509,12 +509,12 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
         if (ngx_processes[i].detached || ngx_processes[i].pid == -1) {
             continue;
         }
-
+        // 正在创建
         if (ngx_processes[i].just_spawn) {
             ngx_processes[i].just_spawn = 0;
             continue;
         }
-
+        // 正在退出
         if (ngx_processes[i].exiting
             && signo == ngx_signal_value(NGX_SHUTDOWN_SIGNAL))
         {
@@ -686,7 +686,7 @@ ngx_reap_children(ngx_cycle_t *cycle)
     return live;
 }
 
-// 处理子进程退出
+// 处理主进程退出
 static void
 ngx_master_process_exit(ngx_cycle_t *cycle)
 {
@@ -980,7 +980,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
     }
 }
 
-
+// 子进程退出
 static void
 ngx_worker_process_exit(ngx_cycle_t *cycle)
 {
@@ -1086,7 +1086,7 @@ ngx_channel_handler(ngx_event_t *ev)
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,
                        "channel command: %ui", ch.command);
-
+        // 根据命令设置对应的标记，在子进程死循环里会不断判断这些标记
         switch (ch.command) {
 
         case NGX_CMD_QUIT:

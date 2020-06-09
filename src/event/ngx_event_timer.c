@@ -49,7 +49,7 @@ ngx_event_find_timer(void)
     return (ngx_msec_t) (timer > 0 ? timer : 0);
 }
 
-// 找出过期的节点
+// 处理过期的节点
 void
 ngx_event_expire_timers(void)
 {

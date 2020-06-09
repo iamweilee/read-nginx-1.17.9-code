@@ -194,7 +194,7 @@ ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size, ngx_log_t *log)
     return n;
 }
 
-
+// 封装一个event注册到事件驱动模块
 ngx_int_t
 ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd, ngx_int_t event,
     ngx_event_handler_pt handler)
@@ -239,7 +239,7 @@ ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd, ngx_int_t event,
     return NGX_OK;
 }
 
-
+// 关闭两端
 void
 ngx_close_channel(ngx_fd_t *fd, ngx_log_t *log)
 {

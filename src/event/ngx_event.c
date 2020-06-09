@@ -201,6 +201,7 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
         flags = 0;
 
     } else {
+        // 找出最快到期的节点，最长阻塞节点的到期时间，从epoll返回后需要更新时间
         timer = ngx_event_find_timer();
         flags = NGX_UPDATE_TIME;
 
@@ -214,18 +215,18 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 
 #endif
     }
-    // 开启
+    // 开启accept互斥锁
     if (ngx_use_accept_mutex) {
         // 不能accept
         if (ngx_accept_disabled > 0) {
             ngx_accept_disabled--;
 
-        } else {
+        } else { // 可以accept则抢锁
             // 抢锁
             if (ngx_trylock_accept_mutex(cycle) == NGX_ERROR) {
                 return;
             }
-            // 抢到了锁则延迟处理accept返回的节点
+            // 抢到了锁则延迟处理accept返回的节点，即先加入队列，再处理
             if (ngx_accept_mutex_held) {
                 flags |= NGX_POST_EVENTS;
 
@@ -243,26 +244,26 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
         ngx_event_move_posted_next(cycle);
         timer = 0;
     }
-
+    // 当前时间
     delta = ngx_current_msec;
 
     (void) ngx_process_events(cycle, timer, flags);
-
+    // ngx_process_events执行了多长时间 
     delta = ngx_current_msec - delta;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "timer delta: %M", delta);
-
+    // 处理accept队列的节点
     ngx_event_process_posted(cycle, &ngx_posted_accept_events);
 
     if (ngx_accept_mutex_held) {
         ngx_shmtx_unlock(&ngx_accept_mutex);
     }
-
+    // 
     if (delta) {
         ngx_event_expire_timers();
     }
-
+    // 处理post队列的节点
     ngx_event_process_posted(cycle, &ngx_posted_events);
 }
 
