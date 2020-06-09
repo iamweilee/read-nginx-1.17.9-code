@@ -9,7 +9,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 
-
+// 读取size大小字节的数据到buf
 ssize_t
 ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
 {
@@ -70,7 +70,7 @@ ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "recv: fd:%d %z of %uz", c->fd, n, size);
-
+        // 对端关闭了
         if (n == 0) {
             rev->ready = 0;
             rev->eof = 1;
@@ -90,7 +90,7 @@ ngx_unix_recv(ngx_connection_t *c, u_char *buf, size_t size)
 
             return 0;
         }
-
+        // 有数据
         if (n > 0) {
 
 #if (NGX_HAVE_KQUEUE)

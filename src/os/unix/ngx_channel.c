@@ -9,7 +9,7 @@
 #include <ngx_core.h>
 #include <ngx_channel.h>
 
-
+// 往s中写入ngx_channel_t结构体的内容，并且传递文件描述符
 ngx_int_t
 ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
     ngx_log_t *log)

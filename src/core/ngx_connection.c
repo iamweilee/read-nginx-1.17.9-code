@@ -1038,8 +1038,9 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
     for (i = 0; i < cycle->listening.nelts; i++) {
 
         c = ls[i].connection;
-
+        
         if (c) {
+            // 在事件驱动模块注册了读事件，则解除
             if (c->read->active) {
                 if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
 
@@ -1055,7 +1056,7 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
                     ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
                 }
             }
-
+            // 把connection放回free队列
             ngx_free_connection(c);
 
             c->fd = (ngx_socket_t) -1;
@@ -1063,14 +1064,14 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
         ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
                        "close listening %V #%d ", &ls[i].addr_text, ls[i].fd);
-
+        // 关闭监听的socket
         if (ngx_close_socket(ls[i].fd) == -1) {
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
                           ngx_close_socket_n " %V failed", &ls[i].addr_text);
         }
 
 #if (NGX_HAVE_UNIX_DOMAIN)
-
+        // 是unix域的话则删除unix域路径对应的文件
         if (ls[i].sockaddr->sa_family == AF_UNIX
             && ngx_process <= NGX_PROCESS_MASTER
             && ngx_new_binary == 0)

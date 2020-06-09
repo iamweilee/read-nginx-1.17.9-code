@@ -655,7 +655,7 @@ ngx_epoll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
      * it from its queue, so we do not need to delete explicitly the event
      * before the closing the file descriptor
      */
-    // NGX_CLOSE_EVENT代表关闭文件，epoll会自动删除对应的事件节点，所以这里只需置active为0
+    // NGX_CLOSE_EVENT代表关闭文件描述符的时候，epoll会自动删除对应的事件节点，所以这里只需置active为0
     if (flags & NGX_CLOSE_EVENT) {
         ev->active = 0;
         return NGX_OK;

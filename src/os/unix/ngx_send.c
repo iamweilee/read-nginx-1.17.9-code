@@ -35,17 +35,18 @@ ngx_unix_send(ngx_connection_t *c, u_char *buf, size_t size)
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "send: fd:%d %z of %uz", c->fd, n, size);
-
+        // 发送成功，但是不一定发送了size字节，n代表发送成功的字节
         if (n > 0) {
+            // 小于说明还没发完
             if (n < (ssize_t) size) {
                 wev->ready = 0;
             }
-
+            // 已发送的字节数
             c->sent += n;
-
+            // 返回发送成功的字节数
             return n;
         }
-
+        // send系统调用的错误码
         err = ngx_socket_errno;
 
         if (n == 0) {

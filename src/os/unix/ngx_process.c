@@ -90,7 +90,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     u_long     on;
     ngx_pid_t  pid;
     ngx_int_t  s;
-
+    // 大于0说明传了slot，则取传的，小于0则是命令
     if (respawn >= 0) {
         s = respawn;
 
@@ -114,7 +114,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     if (respawn != NGX_PROCESS_DETACHED) {
 
         /* Solaris 9 still has no AF_LOCAL */
-        // 进程间通信的socket
+        // ngx_processes[s].channel保存进程间通信的fd（unix域）
         if (socketpair(AF_UNIX, SOCK_STREAM, 0, ngx_processes[s].channel) == -1)
         {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -174,7 +174,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
             ngx_close_channel(ngx_processes[s].channel, cycle->log);
             return NGX_INVALID_PID;
         }
-
+        // 全双工的
         ngx_channel = ngx_processes[s].channel[1];
 
     } else {
@@ -200,6 +200,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
         ngx_parent = ngx_pid;
         // 进程自己的进程id
         ngx_pid = ngx_getpid();
+        // 执行工作函数
         proc(cycle, data);
         break;
 
@@ -208,7 +209,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     }
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "start %s %P", name, pid);
-
+    // 在主进程里记录进程的信息到ngx_processes，子进程在proc里死循环，不会执行到这了
     ngx_processes[s].pid = pid;
     ngx_processes[s].exited = 0;
 
