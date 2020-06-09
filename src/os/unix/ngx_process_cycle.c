@@ -744,7 +744,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     ngx_setproctitle("worker process");
 
     for ( ;; ) {
-
+        // 收到退出信号时会这是该标记，说明子进程需要退出
         if (ngx_exiting) {
             if (ngx_event_no_timers_left() == NGX_OK) {
                 ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
@@ -753,14 +753,14 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
         }
 
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
-
+        // 处理事件和定时器
         ngx_process_events_and_timers(cycle);
-
+        // 收到终止信号会设置该标记（SIGINT，TERM）
         if (ngx_terminate) {
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
             ngx_worker_process_exit(cycle);
         }
-
+        // 收到终止信号会设置该标记（QUIT）
         if (ngx_quit) {
             ngx_quit = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
@@ -1086,7 +1086,7 @@ ngx_channel_handler(ngx_event_t *ev)
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,
                        "channel command: %ui", ch.command);
-        
+
         switch (ch.command) {
 
         case NGX_CMD_QUIT:
