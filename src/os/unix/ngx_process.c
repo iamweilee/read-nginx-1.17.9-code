@@ -10,7 +10,6 @@
 #include <ngx_event.h>
 #include <ngx_channel.h>
 
-
 typedef struct {
     int     signo;
     char   *signame;
