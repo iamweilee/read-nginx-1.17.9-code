@@ -9,6 +9,9 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+/*
+    http://nginx.org/en/docs/http/ngx_http_headers_module.html
+*/
 
 typedef struct ngx_http_header_val_s  ngx_http_header_val_t;
 
@@ -472,9 +475,9 @@ ngx_http_parse_expires(ngx_str_t *value, ngx_http_expires_t *expires,
     time_t *expires_time, char **err)
 {
     ngx_uint_t  minus;
-
+    // 没有配置modified
     if (*expires != NGX_HTTP_EXPIRES_MODIFIED) {
-
+        // 判断下面三个特殊值
         if (value->len == 5 && ngx_strncmp(value->data, "epoch", 5) == 0) {
             *expires = NGX_HTTP_EXPIRES_EPOCH;
             return NGX_OK;
@@ -490,7 +493,7 @@ ngx_http_parse_expires(ngx_str_t *value, ngx_http_expires_t *expires,
             return NGX_OK;
         }
     }
-
+    // 是否以@开头,代表是天之内的时间
     if (value->len && value->data[0] == '@') {
         value->data++;
         value->len--;
@@ -516,21 +519,21 @@ ngx_http_parse_expires(ngx_str_t *value, ngx_http_expires_t *expires,
     } else {
         minus = 0;
     }
-
+    // 秒数
     *expires_time = ngx_parse_time(value, 1);
 
     if (*expires_time == (time_t) NGX_ERROR) {
         *err = "invalid value";
         return NGX_ERROR;
     }
-
+    // 天，但是设置的秒数大于1天
     if (*expires == NGX_HTTP_EXPIRES_DAILY
         && *expires_time > 24 * 60 * 60)
     {
         *err = "daily time value must be less than 24 hours";
         return NGX_ERROR;
     }
-
+    // 负数
     if (minus) {
         *expires_time = - *expires_time;
     }
@@ -538,7 +541,7 @@ ngx_http_parse_expires(ngx_str_t *value, ngx_http_expires_t *expires,
     return NGX_OK;
 }
 
-
+// 追加一个header
 static ngx_int_t
 ngx_http_add_header(ngx_http_request_t *r, ngx_http_header_val_t *hv,
     ngx_str_t *value)
@@ -607,7 +610,7 @@ ngx_http_set_last_modified(ngx_http_request_t *r, ngx_http_header_val_t *hv,
     if (ngx_http_set_response_header(r, hv, value) != NGX_OK) {
         return NGX_ERROR;
     }
-
+    // 设置为秒数
     r->headers_out.last_modified_time =
         (value->len) ? ngx_parse_http_time(value->data, value->len) : -1;
 
@@ -704,20 +707,21 @@ ngx_http_headers_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 
-
+// 头插法
 static ngx_int_t
 ngx_http_headers_filter_init(ngx_conf_t *cf)
 {
+    // 处理头
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_headers_filter;
-
+    // 处理body
     ngx_http_next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_trailers_filter;
 
     return NGX_OK;
 }
 
-
+// 处理expires配置
 static char *
 ngx_http_headers_expires(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {

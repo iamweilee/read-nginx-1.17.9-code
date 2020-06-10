@@ -134,22 +134,23 @@ ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec)
     cutoff = NGX_MAX_INT_T_VALUE / 10;
     cutlim = NGX_MAX_INT_T_VALUE % 10;
     step = is_sec ? st_start : st_month;
-
+    // 开头
     p = line->data;
+    // 结尾
     last = p + line->len;
-
+    // 逐个字符判断
     while (p < last) {
-
+        // 数字
         if (*p >= '0' && *p <= '9') {
             if (value >= cutoff && (value > cutoff || *p - '0' > cutlim)) {
                 return NGX_ERROR;
             }
-
+            // 字符数字化
             value = value * 10 + (*p++ - '0');
             valid = 1;
             continue;
         }
-
+        // 单位
         switch (*p++) {
 
         case 'y':
@@ -198,13 +199,17 @@ ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec)
             break;
 
         case 'm':
+            // 可能是m也可能是ms，p这时候指向下一个字符，如果小于last并且等于s说明是ms
             if (p < last && *p == 's') {
                 if (is_sec || step >= st_msec) {
                     return NGX_ERROR;
                 }
+                // 再指向下一个字符
                 p++;
+                // 毫秒
                 step = st_msec;
                 max = NGX_MAX_INT_T_VALUE;
+                // 是1，下面会换算，乘以1000
                 scale = 1;
                 break;
             }
@@ -212,6 +217,7 @@ ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec)
             if (step >= st_min) {
                 return NGX_ERROR;
             }
+            // 分钟
             step = st_min;
             max = NGX_MAX_INT_T_VALUE / 60;
             scale = 60;
@@ -278,6 +284,6 @@ ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec)
     if (total > NGX_MAX_INT_T_VALUE - value) {
         return NGX_ERROR;
     }
-
+    // 秒数
     return total + value;
 }
