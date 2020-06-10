@@ -324,7 +324,7 @@ main(int argc, char *const *argv)
 
         return 0;
     }
-    // 给主进程发送信号，则直接处理信号就行，不是启动nginx
+    // 给主进程发送信号(执行./nginx -s xxx时设置的信号)，则直接处理信号就行，不是启动nginx
     if (ngx_signal) {
         return ngx_signal_process(cycle, ngx_signal);
     }

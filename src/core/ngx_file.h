@@ -14,11 +14,15 @@
 
 
 struct ngx_file_s {
+    // 文件对应的文件描述符
     ngx_fd_t                   fd;
+    // 文件路径
     ngx_str_t                  name;
+    // 文件的元数据
     ngx_file_info_t            info;
-
+    // 应用层偏移
     off_t                      offset;
+    // 文件层的偏移
     off_t                      sys_offset;
 
     ngx_log_t                 *log;

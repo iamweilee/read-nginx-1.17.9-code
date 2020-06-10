@@ -46,14 +46,14 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
     }
 
 #else
-
+    // 文件偏移不等于应用层偏移，则定位到应用层设置的偏移
     if (file->sys_offset != offset) {
         if (lseek(file->fd, offset, SEEK_SET) == -1) {
             ngx_log_error(NGX_LOG_CRIT, file->log, ngx_errno,
                           "lseek() \"%s\" failed", file->name.data);
             return NGX_ERROR;
         }
-
+        // 记录文件层偏移
         file->sys_offset = offset;
     }
 
@@ -64,7 +64,7 @@ ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
                       "read() \"%s\" failed", file->name.data);
         return NGX_ERROR;
     }
-
+    // 更新偏移
     file->sys_offset += n;
 
 #endif

@@ -18,7 +18,7 @@ typedef pid_t       ngx_pid_t;
 #define NGX_INVALID_PID  -1
 
 typedef void (*ngx_spawn_proc_pt) (ngx_cycle_t *cycle, void *data);
-
+// 表示子进程信息的结构体
 typedef struct {
     ngx_pid_t           pid;
     int                 status;
@@ -27,7 +27,7 @@ typedef struct {
     ngx_spawn_proc_pt   proc;
     void               *data;
     char               *name;
-
+    // 
     unsigned            respawn:1;
     unsigned            just_spawn:1;
     unsigned            detached:1;
@@ -35,11 +35,15 @@ typedef struct {
     unsigned            exited:1;
 } ngx_process_t;
 
-
+// 可执行文件的结构体
 typedef struct {
+    // 执行路径
     char         *path;
+    // 
     char         *name;
+    // 执行时的参数，main函数的入参
     char *const  *argv;
+    // 环境变量
     char *const  *envp;
 } ngx_exec_ctx_t;
 

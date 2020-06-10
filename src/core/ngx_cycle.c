@@ -1065,7 +1065,7 @@ ngx_delete_pidfile(ngx_cycle_t *cycle)
     }
 }
 
-
+// 主进程处理信号函数
 ngx_int_t
 ngx_signal_process(ngx_cycle_t *cycle, char *sig)
 {
@@ -1080,10 +1080,10 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     ngx_memzero(&file, sizeof(ngx_file_t));
-
+    // 保存了主进程pid的文件路径
     file.name = ccf->pid;
     file.log = cycle->log;
-
+    // 得开文件
     file.fd = ngx_open_file(file.name.data, NGX_FILE_RDONLY,
                             NGX_FILE_OPEN, NGX_FILE_DEFAULT_ACCESS);
 
@@ -1092,9 +1092,9 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
                       ngx_open_file_n " \"%s\" failed", file.name.data);
         return 1;
     }
-
+    // 读取文件内容，返回读取的字节数
     n = ngx_read_file(&file, buf, NGX_INT64_LEN + 2, 0);
-
+    // 关闭文件
     if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       ngx_close_file_n " \"%s\" failed", file.name.data);
@@ -1103,9 +1103,9 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
     if (n == NGX_ERROR) {
         return 1;
     }
-
+    // 找到第一个非回车换行的字符
     while (n-- && (buf[n] == CR || buf[n] == LF)) { /* void */ }
-
+    // n指向第一个非回车换行的字符，所以要++，解析出pid
     pid = ngx_atoi(buf, ++n);
 
     if (pid == (ngx_pid_t) NGX_ERROR) {
@@ -1114,7 +1114,7 @@ ngx_signal_process(ngx_cycle_t *cycle, char *sig)
                       n, buf, file.name.data);
         return 1;
     }
-    // 处理
+    // 给pid（主进程）发送sig信号
     return ngx_os_signal_process(cycle, sig, pid);
 
 }

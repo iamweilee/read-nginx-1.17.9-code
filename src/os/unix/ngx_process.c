@@ -10,6 +10,7 @@
 #include <ngx_event.h>
 #include <ngx_channel.h>
 
+
 typedef struct {
     int     signo;
     char   *signame;
@@ -261,7 +262,7 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     return pid;
 }
 
-
+// 创建一个子进程（分离状态），执行某个可执行文件
 ngx_pid_t
 ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx)
 {
@@ -274,13 +275,13 @@ static void
 ngx_execute_proc(ngx_cycle_t *cycle, void *data)
 {
     ngx_exec_ctx_t  *ctx = data;
-
+    // 执行某个可执行文件
     if (execve(ctx->path, ctx->argv, ctx->envp) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "execve() failed while executing %s \"%s\"",
                       ctx->name, ctx->path);
     }
-
+    // 说明指向失败，否则不会到这,execve会设置eip
     exit(1);
 }
 
@@ -293,15 +294,29 @@ ngx_init_signals(ngx_log_t *log)
 
     for (sig = signals; sig->signo != 0; sig++) {
         ngx_memzero(&sa, sizeof(struct sigaction));
-
+        // 定义了信号处理函数则设置，否则使用默认处理方式
         if (sig->handler) {
             sa.sa_sigaction = sig->handler;
+            /*
+                设置该flag时，在信号处理函数，有一个入参（第二个）
+                // 根据信号设置里面的字段的值
+                struct siginfo {
+                    int si_signo;
+                    int si_errno;
+                    int si_code;
+                    pid_t si_pid; 
+                    uid_t si_uid;
+                    void* si_addr;
+                    int si_status; // SIGCHLD信号时的子进程退出码
+                    long s_band
+                }
+            */
             sa.sa_flags = SA_SIGINFO;
 
         } else {
             sa.sa_handler = SIG_IGN;
         }
-
+        // 清空屏蔽码，即处理信号时不屏蔽任何信号
         sigemptyset(&sa.sa_mask);
         if (sigaction(sig->signo, &sa, NULL) == -1) {
 #if (NGX_VALGRIND)
@@ -318,7 +333,7 @@ ngx_init_signals(ngx_log_t *log)
     return NGX_OK;
 }
 
-
+// 信号处理函数，信号处理函数是父子进程(fork)间继承的，所以这个函数在父子进程都会执行
 static void
 ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
 {
@@ -330,7 +345,7 @@ ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
     ignore = 0;
 
     err = ngx_errno;
-
+    // 找到触发的信号对应的配置
     for (sig = signals; sig->signo != 0; sig++) {
         if (sig->signo == signo) {
             break;
@@ -340,7 +355,7 @@ ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
     ngx_time_sigsafe_update();
 
     action = "";
-
+    // 进程的类型
     switch (ngx_process) {
 
     case NGX_PROCESS_MASTER:
@@ -444,7 +459,7 @@ ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
 
         break;
     }
-
+    // 发送信号的进程id
     if (siginfo && siginfo->si_pid) {
         ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
                       "signal %d (%s) received from %P%s",
@@ -462,7 +477,7 @@ ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
                       "you should shutdown or terminate "
                       "before either old or new binary's process");
     }
-
+    // 有子进程退出
     if (signo == SIGCHLD) {
         ngx_process_get_status();
     }
@@ -470,7 +485,7 @@ ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
     ngx_set_errno(err);
 }
 
-
+// 获取子进程的状态
 static void
 ngx_process_get_status(void)
 {
@@ -482,21 +497,23 @@ ngx_process_get_status(void)
     ngx_uint_t       one;
 
     one = 0;
-
+    // 获取任意一个子进程的退出码，每次循环获取一个已退出子进程的退出码
     for ( ;; ) {
+        // WNOHANG非阻塞调用，即如果没有已退出的子进程，waitpid也不会阻塞 
         pid = waitpid(-1, &status, WNOHANG);
-
+        // 没有已退出的子进程
         if (pid == 0) {
             return;
         }
-
+        // 出错
         if (pid == -1) {
+            // 出错原因
             err = ngx_errno;
-
+            // 被信号中断
             if (err == NGX_EINTR) {
                 continue;
             }
-
+            // The calling process has no existing unwaited-for child processes
             if (err == NGX_ECHILD && one) {
                 return;
             }
@@ -524,7 +541,7 @@ ngx_process_get_status(void)
 
         one = 1;
         process = "unknown process";
-
+        // 找到pid对应的数据结构，设置退出码
         for (i = 0; i < ngx_last_process; i++) {
             if (ngx_processes[i].pid == pid) {
                 ngx_processes[i].status = status;
@@ -533,7 +550,7 @@ ngx_process_get_status(void)
                 break;
             }
         }
-
+        // 导致子进程退出的信号，如果是的话
         if (WTERMSIG(status)) {
 #ifdef WCOREDUMP
             ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
@@ -547,11 +564,12 @@ ngx_process_get_status(void)
 #endif
 
         } else {
+            // 子进程退出的原因
             ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
                           "%s %P exited with code %d",
                           process, pid, WEXITSTATUS(status));
         }
-
+        // 子进程退出时给exit函数传的状态码是2
         if (WEXITSTATUS(status) == 2 && ngx_processes[i].respawn) {
             ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
                           "%s %P exited with fatal code %d "
@@ -631,7 +649,7 @@ ngx_debug_point(void)
     }
 }
 
-
+// 给pid进程发送name对应的信号
 ngx_int_t
 ngx_os_signal_process(ngx_cycle_t *cycle, char *name, ngx_pid_t pid)
 {
@@ -640,7 +658,7 @@ ngx_os_signal_process(ngx_cycle_t *cycle, char *name, ngx_pid_t pid)
     for (sig = signals; sig->signo != 0; sig++) {
         // 找到给主进程发的信号
         if (ngx_strcmp(name, sig->name) == 0) {
-            // 给主进程进程发信号
+            // 给pid进程发信号
             if (kill(pid, sig->signo) != -1) {
                 return 0;
             }
