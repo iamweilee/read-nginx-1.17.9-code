@@ -604,7 +604,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 #endif
         }
     }
-
+    // 处理监听socket
     if (ngx_open_listening_sockets(cycle) != NGX_OK) {
         goto failed;
     }
