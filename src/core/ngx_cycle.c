@@ -492,16 +492,16 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
 
     /* handle the listening sockets */
-
+    // 先处理从上一个cycle继承过来的socket
     if (old_cycle->listening.nelts) {
         ls = old_cycle->listening.elts;
         for (i = 0; i < old_cycle->listening.nelts; i++) {
             ls[i].remain = 0;
         }
-
+        // 新cycle的元素首地址
         nls = cycle->listening.elts;
         for (n = 0; n < cycle->listening.nelts; n++) {
-
+            // 遍历上一个cycle中的listening数组
             for (i = 0; i < old_cycle->listening.nelts; i++) {
                 if (ls[i].ignore) {
                     continue;
@@ -604,7 +604,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 #endif
         }
     }
-
+    // 处理监听socket
     if (ngx_open_listening_sockets(cycle) != NGX_OK) {
         goto failed;
     }

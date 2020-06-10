@@ -133,9 +133,9 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         sw_spaces_after_digit,
         sw_almost_done
     } state;
-
+    // 当前状态
     state = r->state;
-
+    // 逐个字符解析
     for (p = b->pos; p < b->last; p++) {
         ch = *p;
 
@@ -143,8 +143,9 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         /* HTTP methods: GET, HEAD, POST */
         case sw_start:
+            // 指向http报文的开始字符
             r->request_start = p;
-
+            
             if (ch == CR || ch == LF) {
                 break;
             }
