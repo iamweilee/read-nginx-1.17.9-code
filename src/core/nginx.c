@@ -448,14 +448,14 @@ ngx_show_version_info(void)
     }
 }
 
-
+// 处理从上一个cycle继承过来的fd，在cycle上push多个ngx_listening_t结构体，并且设置相关字段
 static ngx_int_t
 ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 {
     u_char           *p, *v, *inherited;
     ngx_int_t         s;
     ngx_listening_t  *ls;
-
+    // 从环境变量中传递过来
     inherited = (u_char *) getenv(NGINX_VAR);
 
     if (inherited == NULL) {

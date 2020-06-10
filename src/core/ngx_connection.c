@@ -15,7 +15,7 @@ ngx_os_io_t  ngx_io;
 
 static void ngx_drain_connections(ngx_cycle_t *cycle);
 
-
+// 创建一个ngx_listening_t，并设置地址等字段的值
 ngx_listening_t *
 ngx_create_listening(ngx_conf_t *cf, struct sockaddr *sockaddr,
     socklen_t socklen)
@@ -31,17 +31,17 @@ ngx_create_listening(ngx_conf_t *cf, struct sockaddr *sockaddr,
     }
 
     ngx_memzero(ls, sizeof(ngx_listening_t));
-
+    // 申请内存保存地址信息
     sa = ngx_palloc(cf->pool, socklen);
     if (sa == NULL) {
         return NULL;
     }
 
     ngx_memcpy(sa, sockaddr, socklen);
-
+    // 保存地址信息
     ls->sockaddr = sa;
     ls->socklen = socklen;
-
+    // 转成另外一种格式的地址
     len = ngx_sock_ntop(sa, socklen, text, NGX_SOCKADDR_STRLEN, 1);
     ls->addr_text.len = len;
 
@@ -64,7 +64,7 @@ ngx_create_listening(ngx_conf_t *cf, struct sockaddr *sockaddr,
         ls->addr_text_max_len = NGX_SOCKADDR_STRLEN;
         break;
     }
-
+    // 申请内存保存另一种格式的地址
     ls->addr_text.data = ngx_pnalloc(cf->pool, len);
     if (ls->addr_text.data == NULL) {
         return NULL;
@@ -130,7 +130,7 @@ ngx_clone_listening(ngx_cycle_t *cycle, ngx_listening_t *ls)
     return NGX_OK;
 }
 
-
+// 设置从上一个cycle继承过来的fd的信息
 ngx_int_t
 ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 {
