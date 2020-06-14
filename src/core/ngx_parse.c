@@ -284,6 +284,6 @@ ngx_parse_time(ngx_str_t *line, ngx_uint_t is_sec)
     if (total > NGX_MAX_INT_T_VALUE - value) {
         return NGX_ERROR;
     }
-    // 秒数
+    // 秒数 
     return total + value;
 }

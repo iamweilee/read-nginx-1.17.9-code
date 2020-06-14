@@ -3,7 +3,7 @@
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
  */
-
+// 分析文章https://blog.csdn.net/THEANARKH/article/details/106747366
 
 #include <ngx_config.h>
 #include <ngx_core.h>
